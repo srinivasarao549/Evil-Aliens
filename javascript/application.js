@@ -27,12 +27,12 @@ function Tower(ctx, x, y) {
     if (x < 0) {
         this.angle += Math.PI;
     }
-    // fix angle when x < 0
     this.x = x;
     this.y = y;
     this.ctx = ctx;
     this.speed = 4 / this.radial_distance;
     this.remove = false;
+    this.fireRange = 30;
 }
 
 Tower.prototype.update = function() {
@@ -50,6 +50,12 @@ Tower.prototype.draw = function() {
     this.ctx.fill();
 }
 
+Tower.prototype.canShoot = function(alien) {
+    var distance_squared = (((this.x - alien.x) * (this.x - alien.x)) + ((this.y - alien.y) * (this.y - alien.y)));
+    var radii_squared = (this.radius + this.fireRange + alien.radius) * (this.radius + this.fireRange + alien.radius);
+    return distance_squared < radii_squared;
+}
+
 function Alien(ctx, radial_distance, angle) {
     this.ctx = ctx;
     this.x = null;
@@ -57,8 +63,10 @@ function Alien(ctx, radial_distance, angle) {
     this.radius = 5;
     this.radial_distance = radial_distance;
     this.angle = angle;
-    this.speed = Math.random() * 10;
+    this.speed = Math.random() + 1;
     this.remove = false;
+    this.health = 100;
+    this.isHit = false;
 }
 
 Alien.prototype.update = function() {
@@ -80,15 +88,44 @@ Alien.prototype.hitPlanet = function() {
 Alien.prototype.draw = function() {
     this.ctx.beginPath();
     this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-    this.ctx.fillStyle = "green";
+    this.ctx.fillStyle = this.isHit ? "yellow" : "green";
     this.ctx.fill();
+}
+
+Alien.prototype.hit = function() {
+    this.health -= 10;
+    this.isHit = true;
+    if (this.health <= 0) {
+        this.remove = true;
+    }
+}
+
+function LaserBeam(ctx, tower, alien) {
+    this.ctx = ctx;
+    this.tower = tower;
+    this.alien = alien;
+    this.remove = false;
+}
+
+LaserBeam.prototype.update = function() {
+    var xDiff = this.tower.x - this.alien.x;
+    var yDiff = this.tower.y - this.alien.y;
+    if (Math.sqrt((xDiff*xDiff) + (yDiff*yDiff)) > 30) {
+        this.remove = true;
+    }
+}
+
+LaserBeam.prototype.draw = function() {
+    this.ctx.moveTo(this.tower.x, this.tower.y);
+    this.ctx.lineTo(this.alien.x, this.alien.y);
+    this.ctx.strokeStyle = "red";
+    this.ctx.stroke();
 }
 
 function Game(ctx) {
     this.entities = [];
     this.ctx = ctx;
     this.entities.push(new Planet(ctx));
-    this.addAliens();
 
     var that = this;
 
@@ -99,10 +136,12 @@ function Game(ctx) {
     });
 }
 
-Game.prototype.addAliens = function() {
-    for (var i = 0; i < 10; i++) {
-        this.entities.push(new Alien(this.ctx, this.ctx.canvas.width, Math.random() * 180));
-    }
+Game.prototype.start = function() {
+    var that = this;
+    (function gameLoop() {
+        that.loop();
+        window.webkitRequestAnimationFrame(gameLoop);
+    })();
 }
 
 Game.prototype.loop = function() {
@@ -113,10 +152,28 @@ Game.prototype.loop = function() {
 
 Game.prototype.update = function() {
     var removable = [];
+    
+    if (this.lastAlienAddedAt == null || (new Date().getTime() - this.lastAlienAddedAt) > 500) {
+        this.entities.push(new Alien(this.ctx, this.ctx.canvas.width, Math.random() * Math.PI * 180));
+        this.lastAlienAddedAt = new Date().getTime();
+    }
 
     for (var i = 0; i < this.entities.length; i++) {
         var entity = this.entities[i];
         entity.update();
+
+        if (entity instanceof Tower) {
+            for (var x = 0; x < this.entities.length; x++) {
+                var alien = this.entities[x];
+                if (alien instanceof Alien) {
+                    if (entity.canShoot(alien)) {
+                        //other.hit();
+                        this.entities.push(new LaserBeam(this.ctx, entity, alien));
+                    }
+                }
+            }
+        }
+
         if (entity.remove == true) {
             removable.push(i);
         }
@@ -129,6 +186,7 @@ Game.prototype.update = function() {
     if (this.click != null) {
         this.entities.push(new Tower(this.ctx, this.click.x, this.click.y));
     }
+
 }
 
 Game.prototype.draw = function() {
@@ -145,8 +203,4 @@ Game.prototype.draw = function() {
 var canvas = document.getElementById("game-surface");
 var ctx = canvas.getContext("2d");
 var game = new Game(ctx);
-
-(function gameLoop() {
-    game.loop();
-    window.webkitRequestAnimationFrame(gameLoop);
-})();
+game.start();
