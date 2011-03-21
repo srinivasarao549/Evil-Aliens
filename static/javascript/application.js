@@ -136,7 +136,7 @@ Alien.prototype.draw = function() {
 Alien.prototype.hit = function(damage) {
     this.health -= damage;
     this.fillColor.darken(0.1);
-    if (this.health <= 0) {
+    if (this.health <= 0 && !this.remove) {
         this.game.addEntity(new ExplodingAlien(this.game, this.ctx, this.x, this.y));
         this.remove = true;
     }
@@ -148,13 +148,13 @@ function ExplodingAlien(game, ctx, x, y) {
     this.x = x;
     this.y = y;
     this.radius = 5;
-    this.color = new Color(5, 97, 5, 1);
+    this.color = new Color(5, 97, 5, 0.5);
     this.remove = false;
 }
 
 ExplodingAlien.prototype.update = function() {
-    this.radius += 0.1;
-    this.color.lighten(0.1);
+    this.radius += 0.2;
+    this.color.lighten(0.2);
 
     if (this.radius > 20) {
         this.remove = true;
@@ -164,8 +164,10 @@ ExplodingAlien.prototype.update = function() {
 ExplodingAlien.prototype.draw = function() {
     this.ctx.beginPath();
     this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-    this.ctx.strokeStyle = this.color.toString();
-    this.ctx.stroke();
+    //this.ctx.strokeStyle = this.color.toString();
+    //this.ctx.stroke();
+    this.ctx.fillStyle = this.color.toString();
+    this.ctx.fill();
     this.ctx.closePath();
 }
 
@@ -197,6 +199,7 @@ LaserBeam.prototype.draw = function() {
 }
 
 function Game(ctx) {
+    this.loopSpeedEl = document.getElementById("loop-speed");
     this.entities = [];
     this.ctx = ctx;
     this.addEntity(new Planet(game, ctx));
@@ -229,8 +232,12 @@ Game.prototype.start = function() {
 }
 
 Game.prototype.loop = function() {
+    var start = new Date();
     this.update();
     this.draw();
+    var stop = new Date();
+    var loopSpeed = stop.getTime() - start.getTime();
+    this.loopSpeedEl.innerHTML = loopSpeed;
 }
 
 Game.prototype.update = function() {
