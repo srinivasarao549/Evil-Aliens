@@ -67,6 +67,7 @@ function Tower(game, ctx, x, y) {
     this.speed = 4 / this.radial_distance;
     this.remove = false;
     this.fireRange = 30;
+    this.isShooting = false;
 }
 
 Tower.prototype.update = function() {
@@ -86,6 +87,7 @@ Tower.prototype.draw = function() {
 }
 
 Tower.prototype.canShoot = function(alien) {
+    if (this.isShooting) { return false; }
     var distance_squared = (((this.x - alien.x) * (this.x - alien.x)) + ((this.y - alien.y) * (this.y - alien.y)));
     var radii_squared = (this.radius + this.fireRange + alien.radius) * (this.radius + this.fireRange + alien.radius);
     return distance_squared < radii_squared;
@@ -135,7 +137,7 @@ Alien.prototype.draw = function() {
 
 Alien.prototype.hit = function(damage) {
     this.health -= damage;
-    this.fillColor.darken(0.1);
+    this.fillColor.darken(0.75);
     if (this.health <= 0 && !this.remove) {
         this.game.addEntity(new ExplodingAlien(this.game, this.ctx, this.x, this.y));
         this.remove = true;
@@ -148,7 +150,7 @@ function ExplodingAlien(game, ctx, x, y) {
     this.x = x;
     this.y = y;
     this.radius = 5;
-    this.color = new Color(5, 97, 5, 0.5);
+    this.color = new Color(5, 97, 5, 0.8);
     this.remove = false;
 }
 
@@ -164,10 +166,10 @@ ExplodingAlien.prototype.update = function() {
 ExplodingAlien.prototype.draw = function() {
     this.ctx.beginPath();
     this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-    //this.ctx.strokeStyle = this.color.toString();
-    //this.ctx.stroke();
-    this.ctx.fillStyle = this.color.toString();
-    this.ctx.fill();
+    this.ctx.strokeStyle = this.color.toString();
+    this.ctx.stroke();
+    //this.ctx.fillStyle = this.color.toString();
+    //this.ctx.fill();
     this.ctx.closePath();
 }
 
@@ -177,15 +179,17 @@ function LaserBeam(game, ctx, tower, alien) {
     this.tower = tower;
     this.alien = alien;
     this.remove = false;
+    this.tower.isShooting = true;
 }
 
 LaserBeam.prototype.update = function() {
     var xDiff = this.tower.x - this.alien.x;
     var yDiff = this.tower.y - this.alien.y;
     if (Math.sqrt((xDiff*xDiff) + (yDiff*yDiff)) > 30) {
+        this.tower.isShooting = false;
         this.remove = true;
     } else {
-        this.alien.hit(0.5);
+        this.alien.hit(1);
     }
 }
 
