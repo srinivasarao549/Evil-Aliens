@@ -10,11 +10,17 @@ Color.prototype.darken = function(amount) {
     this.l = Math.max(0, this.l - amount);
 }
 
+Color.prototype.lighten = function(amount) {
+    if (this.l == 100) { return; }
+    this.l = Math.min(100, this.l + amount);
+}
+
 Color.prototype.toString = function() {
     return "hsla(" + this.h + ", " + this.s + "%, " + this.l + "%, " + this.a + ")";
 }
 
-function Planet(ctx) {
+function Planet(game, ctx) {
+    this.game = game;
     this.ctx = ctx;
     this.radius = Planet.RADIUS;
     this.x = 0;
@@ -36,7 +42,8 @@ Planet.prototype.draw = function() {
     this.ctx.fill();
 }
 
-function Tower(ctx, x, y) {
+function Tower(game, ctx, x, y) {
+    this.game = game;
     this.radius = 10;
     this.radial_distance = Math.sqrt((x*x) + (y*y)); // distance from 0,0
     this.angle = Math.atan(y / x);
@@ -73,7 +80,8 @@ Tower.prototype.canShoot = function(alien) {
     return distance_squared < radii_squared;
 }
 
-function Alien(ctx, radial_distance, angle) {
+function Alien(game, ctx, radial_distance, angle) {
+    this.game = game;
     this.ctx = ctx;
     this.x = null;
     this.y = null;
@@ -83,7 +91,8 @@ function Alien(ctx, radial_distance, angle) {
     this.speed = Math.random() + 1;
     this.remove = false;
     this.health = 100;
-    this.color = new Color(111, 98, 50, 1);
+    this.fillColor = new Color(111, 98, 50, 1);
+    this.borderColor = new Color(111, 98, 50, 1);
 }
 
 Alien.prototype.update = function() {
@@ -105,20 +114,52 @@ Alien.prototype.hitPlanet = function() {
 Alien.prototype.draw = function() {
     this.ctx.beginPath();
     this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-    this.ctx.fillStyle = this.color.toString();
+    this.ctx.fillStyle = this.fillColor.toString();
     this.ctx.fill();
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeStyle = this.borderColor.toString();
+    this.ctx.stroke();
     this.ctx.closePath();
 }
 
 Alien.prototype.hit = function(damage) {
     this.health -= damage;
-    this.color.darken(0.1);
+    this.fillColor.darken(0.1);
     if (this.health <= 0) {
+        this.game.addEntity(new ExplodingAlien(this.game, this.ctx, this.x, this.y));
         this.remove = true;
     }
 }
 
-function LaserBeam(ctx, tower, alien) {
+function ExplodingAlien(game, ctx, x, y) {
+    this.game = game;
+    this.ctx = ctx;
+    this.x = x;
+    this.y = y;
+    this.radius = 5;
+    this.color = new Color(5, 97, 5, 1);
+    this.remove = false;
+}
+
+ExplodingAlien.prototype.update = function() {
+    this.radius += 0.1;
+    this.color.lighten(0.1);
+
+    if (this.radius > 20) {
+        this.remove = true;
+    }
+}
+
+ExplodingAlien.prototype.draw = function() {
+    this.ctx.beginPath();
+    this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+    this.ctx.strokeStyle = this.color.toString();
+    this.ctx.stroke();
+    this.ctx.closePath();
+}
+
+function LaserBeam(game, ctx, tower, alien) {
+    this.game = game;
     this.ctx = ctx;
     this.tower = tower;
     this.alien = alien;
@@ -131,7 +172,7 @@ LaserBeam.prototype.update = function() {
     if (Math.sqrt((xDiff*xDiff) + (yDiff*yDiff)) > 30) {
         this.remove = true;
     } else {
-        this.alien.hit();
+        this.alien.hit(0.1);
     }
 }
 
@@ -147,7 +188,7 @@ LaserBeam.prototype.draw = function() {
 function Game(ctx) {
     this.entities = [];
     this.ctx = ctx;
-    this.entities.push(new Planet(ctx));
+    this.addEntity(new Planet(game, ctx));
 
     var that = this;
 
@@ -156,6 +197,10 @@ function Game(ctx) {
         var y = event.clientY - that.ctx.canvas.offsetTop - (that.ctx.canvas.height/2);
         that.click = {x:x, y:y};
     });
+}
+
+Game.prototype.addEntity = function(entity) {
+    this.entities.push(entity);
 }
 
 Game.prototype.start = function() {
@@ -173,7 +218,7 @@ Game.prototype.loop = function() {
 
 Game.prototype.update = function() {
     if (this.lastAlienAddedAt == null || (new Date().getTime() - this.lastAlienAddedAt) > 500) {
-        this.entities.push(new Alien(this.ctx, this.ctx.canvas.width, Math.random() * Math.PI * 180));
+        this.addEntity(new Alien(this, this.ctx, this.ctx.canvas.width, Math.random() * Math.PI * 180));
         this.lastAlienAddedAt = new Date().getTime();
     }
 
@@ -186,7 +231,7 @@ Game.prototype.update = function() {
                 var alien = this.entities[x];
                 if (alien instanceof Alien) {
                     if (entity.canShoot(alien)) {
-                        this.entities.push(new LaserBeam(this.ctx, entity, alien));
+                        this.addEntity(new LaserBeam(this, this.ctx, entity, alien));
                     }
                 }
             }
@@ -201,7 +246,7 @@ Game.prototype.update = function() {
     }
 
     if (this.click != null) {
-        this.entities.push(new Tower(this.ctx, this.click.x, this.click.y));
+        this.addEntity(new Tower(this, this.ctx, this.click.x, this.click.y));
         this.click = null;
     }
 
@@ -212,8 +257,7 @@ Game.prototype.draw = function() {
     this.ctx.save();
     this.ctx.translate(this.ctx.canvas.width/2, this.ctx.canvas.height/2);
     for (var i = 0; i < this.entities.length; i++) {
-        var entity = this.entities[i];
-        entity.draw();
+        this.entities[i].draw();
     }
     this.ctx.restore();
 }
