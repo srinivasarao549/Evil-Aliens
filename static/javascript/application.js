@@ -1,3 +1,14 @@
+window.requestAnimFrame = (function(){
+      return  window.requestAnimationFrame       ||
+              window.webkitRequestAnimationFrame ||
+              window.mozRequestAnimationFrame    ||
+              window.oRequestAnimationFrame      ||
+              window.msRequestAnimationFrame     ||
+              function(/* function */ callback, /* DOMElement */ element){
+                window.setTimeout(callback, 1000 / 60);
+              };
+})();
+
 function Color(hue, saturation, lightness, alpha) {
     this.h = hue;
     this.s = saturation;
@@ -172,7 +183,7 @@ LaserBeam.prototype.update = function() {
     if (Math.sqrt((xDiff*xDiff) + (yDiff*yDiff)) > 30) {
         this.remove = true;
     } else {
-        this.alien.hit(0.1);
+        this.alien.hit(0.5);
     }
 }
 
@@ -197,6 +208,12 @@ function Game(ctx) {
         var y = event.clientY - that.ctx.canvas.offsetTop - (that.ctx.canvas.height/2);
         that.click = {x:x, y:y};
     });
+
+    this.ctx.canvas.addEventListener("touchstart", function(e) {
+        var x =  event.clientX - that.ctx.canvas.offsetLeft - (that.ctx.canvas.width/2);
+        var y = event.clientY - that.ctx.canvas.offsetTop - (that.ctx.canvas.height/2);
+        that.click = {x:x, y:y};
+    });
 }
 
 Game.prototype.addEntity = function(entity) {
@@ -207,7 +224,7 @@ Game.prototype.start = function() {
     var that = this;
     (function gameLoop() {
         that.loop();
-        window.webkitRequestAnimationFrame(gameLoop);
+        requestAnimFrame(gameLoop);
     })();
 }
 
