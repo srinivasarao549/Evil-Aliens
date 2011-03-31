@@ -137,7 +137,7 @@ Alien.prototype.draw = function() {
 
 Alien.prototype.hit = function(damage) {
     this.health -= damage;
-    this.fillColor.darken(0.75);
+    this.fillColor.darken(5);
     if (this.health <= 0 && !this.remove) {
         this.game.addEntity(new ExplodingAlien(this.game, this.ctx, this.x, this.y));
         this.remove = true;
@@ -180,17 +180,22 @@ function LaserBeam(game, ctx, tower, alien) {
     this.alien = alien;
     this.remove = false;
     this.tower.isShooting = true;
+    this.damage = 1;
 }
 
 LaserBeam.prototype.update = function() {
-    var xDiff = this.tower.x - this.alien.x;
-    var yDiff = this.tower.y - this.alien.y;
-    if (Math.sqrt((xDiff*xDiff) + (yDiff*yDiff)) > 30) {
+    if (this.inRange()) {
         this.tower.isShooting = false;
         this.remove = true;
     } else {
-        this.alien.hit(1);
+        this.alien.hit(this.damage * this.game.deltaTime());
     }
+}
+
+LaserBeam.prototype.inRange = function() {
+    var xDiff = this.tower.x - this.alien.x;
+    var yDiff = this.tower.y - this.alien.y;
+    return (Math.sqrt((xDiff*xDiff) + (yDiff*yDiff)) > 30);
 }
 
 LaserBeam.prototype.draw = function() {
