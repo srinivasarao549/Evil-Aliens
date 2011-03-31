@@ -227,18 +227,14 @@ function Game(ctx) {
     this.ctx = ctx;
     this.addEntity(new Planet(game, ctx));
     this.timer = new Timer();
+    this.stats = new Stats();
+}
 
+Game.prototype.startInput = function() {
     var that = this;
-
     this.ctx.canvas.addEventListener("click", function(e) {
-        var x =  event.clientX - that.ctx.canvas.offsetLeft - (that.ctx.canvas.width/2);
-        var y = event.clientY - that.ctx.canvas.offsetTop - (that.ctx.canvas.height/2);
-        that.click = {x:x, y:y};
-    });
-
-    this.ctx.canvas.addEventListener("touchstart", function(e) {
-        var x =  event.clientX - that.ctx.canvas.offsetLeft - (that.ctx.canvas.width/2);
-        var y = event.clientY - that.ctx.canvas.offsetTop - (that.ctx.canvas.height/2);
+        var x =  event.clientX - that.ctx.canvas.getBoundingClientRect().left - (that.ctx.canvas.width/2);
+        var y = event.clientY - that.ctx.canvas.getBoundingClientRect().top - (that.ctx.canvas.height/2);
         that.click = {x:x, y:y};
     });
 }
@@ -252,6 +248,8 @@ Game.prototype.addEntity = function(entity) {
 }
 
 Game.prototype.start = function() {
+    this.startInput();
+    document.body.appendChild(this.stats.domElement);
     var that = this;
     (function gameLoop() {
         that.loop();
@@ -263,6 +261,7 @@ Game.prototype.loop = function() {
     this.timer.tick();
     this.update();
     this.draw();
+    this.stats.update();
 }
 
 Game.prototype.update = function() {
