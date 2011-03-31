@@ -255,7 +255,7 @@ Game.prototype.start = function() {
     var that = this;
     (function gameLoop() {
         that.loop();
-        requestAnimFrame(gameLoop);
+        requestAnimFrame(gameLoop, this.ctx.canvas);
     })();
 }
 
