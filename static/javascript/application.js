@@ -64,7 +64,7 @@ function Tower(game, ctx, x, y) {
     this.x = x;
     this.y = y;
     this.ctx = ctx;
-    this.speed = 4 / this.radial_distance;
+    this.speed = 0.5 / this.radial_distance;
     this.remove = false;
     this.fireRange = 30;
     this.isShooting = false;
@@ -73,7 +73,7 @@ function Tower(game, ctx, x, y) {
 Tower.prototype.update = function() {
     this.x = this.radial_distance * Math.cos(this.angle);
     this.y = this.radial_distance * Math.sin(this.angle);
-    this.angle += this.speed;
+    this.angle += this.speed * this.game.deltaTime();
     if (this.angle > 6.28318531) this.angle = 0;
 }
 
@@ -101,7 +101,7 @@ function Alien(game, ctx, radial_distance, angle) {
     this.radius = 5;
     this.radial_distance = radial_distance;
     this.angle = angle;
-    this.speed = Math.random() + 1;
+    this.speed = 0.1;
     this.remove = false;
     this.health = 100;
     this.fillColor = new Color(111, 98, 50, 1);
@@ -111,7 +111,7 @@ function Alien(game, ctx, radial_distance, angle) {
 Alien.prototype.update = function() {
     this.x = this.radial_distance * Math.cos(this.angle);
     this.y = this.radial_distance * Math.sin(this.angle);
-    this.radial_distance -= this.speed;
+    this.radial_distance -= this.speed * this.game.deltaTime();
 
     if (this.hitPlanet()) {
         this.remove = true;
@@ -202,11 +202,26 @@ LaserBeam.prototype.draw = function() {
     this.ctx.closePath();
 }
 
+function Timer() {
+    this.time = null;
+    this.last = null;
+}
+
+Timer.prototype.tick = function() {
+    this.last = this.time;
+    this.time = Date.now();
+}
+
+Timer.prototype.diffSinceTick = function() {
+    return this.time - this.last;
+}
+
 function Game(ctx) {
     this.loopSpeedEl = document.getElementById("loop-speed");
     this.entities = [];
     this.ctx = ctx;
     this.addEntity(new Planet(game, ctx));
+    this.timer = new Timer();
 
     var that = this;
 
@@ -223,6 +238,10 @@ function Game(ctx) {
     });
 }
 
+Game.prototype.deltaTime = function() {
+    return this.timer.diffSinceTick();
+}
+
 Game.prototype.addEntity = function(entity) {
     this.entities.push(entity);
 }
@@ -236,12 +255,9 @@ Game.prototype.start = function() {
 }
 
 Game.prototype.loop = function() {
-    var start = new Date();
+    this.timer.tick();
     this.update();
     this.draw();
-    var stop = new Date();
-    var loopSpeed = stop.getTime() - start.getTime();
-    this.loopSpeedEl.innerHTML = loopSpeed;
 }
 
 Game.prototype.update = function() {
