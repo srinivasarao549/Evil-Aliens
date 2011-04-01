@@ -30,6 +30,50 @@ Color.prototype.toString = function() {
     return "hsla(" + this.h + ", " + this.s + "%, " + this.l + "%, " + this.a + ")";
 }
 
+function AssetManager() {
+    this.successCount = 0;
+    this.errorCount = 0;
+    this.cache = {};
+    this.downloadQueue = [];
+}
+
+AssetManager.prototype.queueDownload = function(path) {
+    this.downloadQueue.push(path);
+}
+
+AssetManager.prototype.downloadAll = function(callback) {
+    for (var i = 0; i < this.downloadQueue.length; i++) {
+        var path = this.downloadQueue[i];
+        var img = new Image();
+        var that = this;
+        img.addEventListener("load", function() {
+            that.successCount += 1;
+            if (that.isDone()) {
+                callback();
+            }
+        });
+        img.addEventListener("error", function() {
+            that.errorCount += 1;
+            if (that.isDone()) {
+                callback();
+            }
+        });
+        img.src = path;
+        this.cache[path] = img;
+    }
+}
+
+AssetManager.prototype.getImage = function(path) {
+    return this.cache[path];
+}
+
+AssetManager.prototype.isDone = function() {
+    return (this.downloadQueue.length == this.successCount + this.errorCount);
+}
+
+var ASSET_MANAGER = new AssetManager();
+ASSET_MANAGER.queueDownload("img/tower.png");
+
 function Planet(game, ctx) {
     this.game = game;
     this.ctx = ctx;
@@ -55,7 +99,8 @@ Planet.prototype.draw = function() {
 
 function Tower(game, ctx, x, y) {
     this.game = game;
-    this.radius = 10;
+    this.sprite = ASSET_MANAGER.getImage("img/tower.png");
+    this.radius = this.sprite.width / 2;
     this.radial_distance = Math.sqrt((x*x) + (y*y)); // distance from 0,0
     this.angle = Math.atan(y / x);
     if (x < 0) {
@@ -64,7 +109,7 @@ function Tower(game, ctx, x, y) {
     this.x = x;
     this.y = y;
     this.ctx = ctx;
-    this.speed = 0.5 / this.radial_distance;
+    this.speed = 0.2 / this.radial_distance;
     this.remove = false;
     this.fireRange = 30;
     this.isShooting = false;
@@ -81,9 +126,10 @@ Tower.prototype.draw = function() {
     this.ctx.beginPath();
     this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
     this.ctx.closePath();
-    this.ctx.fillStyle = "blue";
-    this.ctx.fill();
+    this.ctx.strokeStyle = "blue";
+    this.ctx.stroke();
     this.ctx.closePath();
+    this.ctx.drawImage(this.sprite, this.x - this.radius, this.y - this.radius);
 }
 
 Tower.prototype.canShoot = function(alien) {
@@ -222,7 +268,6 @@ Timer.prototype.diffSinceTick = function() {
 }
 
 function Game(ctx) {
-    this.loopSpeedEl = document.getElementById("loop-speed");
     this.entities = [];
     this.ctx = ctx;
     this.addEntity(new Planet(game, ctx));
@@ -313,4 +358,6 @@ Game.prototype.draw = function() {
 var canvas = document.getElementById("game-surface");
 var ctx = canvas.getContext("2d");
 var game = new Game(ctx);
-game.start();
+ASSET_MANAGER.downloadAll(function() {
+    game.start();
+});
