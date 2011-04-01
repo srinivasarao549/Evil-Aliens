@@ -73,6 +73,30 @@ AssetManager.prototype.isDone = function() {
 
 var ASSET_MANAGER = new AssetManager();
 ASSET_MANAGER.queueDownload("img/tower.png");
+ASSET_MANAGER.queueDownload("img/explosion.png");
+
+function Animation(spriteSheet, frameWidth, frameDuration) {
+    this.spriteSheet = spriteSheet;
+    this.frameWidth = frameWidth;
+    this.frameDuration = frameDuration;
+    this.frameHeight= this.spriteSheet.height;
+    this.totalTime = (this.spriteSheet.width / this.frameWidth) * this.frameDuration;
+    this.elapsedTime = 0;
+    this.currentFrameIndex = 0;
+}
+
+Animation.prototype.drawFrame = function(tick, ctx, x, y) {
+    this.elapsedTime += tick;
+    if (this.isDone()) { return; }
+    var index = Math.floor(this.elapsedTime / this.frameDuration);
+    var locX = x - (this.frameWidth/2);
+    var locY = y - (this.frameHeight/2);
+    ctx.drawImage(this.spriteSheet, index*this.frameWidth, 0, this.frameWidth, this.frameHeight, locX, locY, this.frameWidth, this.frameHeight);
+}
+
+Animation.prototype.isDone = function() {
+    return (this.elapsedTime >= this.totalTime);
+}
 
 function Planet(game, ctx) {
     this.game = game;
@@ -206,18 +230,17 @@ function ExplodingAlien(game, ctx, x, y) {
     this.radius = 5;
     this.color = new Color(5, 97, 5, 0.8);
     this.remove = false;
+    this.animation = new Animation(ASSET_MANAGER.getImage("img/explosion.png"), 24, 0.1);
 }
 
 ExplodingAlien.prototype.update = function() {
-    this.radius += 0.2;
-    this.color.lighten(0.2);
-
-    if (this.radius > 20) {
+    if (this.animation.isDone()) {
         this.remove = true;
     }
 }
 
 ExplodingAlien.prototype.draw = function() {
+    /*
     this.ctx.beginPath();
     this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
     this.ctx.strokeStyle = this.color.toString();
@@ -225,6 +248,8 @@ ExplodingAlien.prototype.draw = function() {
     //this.ctx.fillStyle = this.color.toString();
     //this.ctx.fill();
     this.ctx.closePath();
+    */
+    this.animation.drawFrame(this.game.clockTick, this.ctx, this.x, this.y);
 }
 
 function LaserBeam(game, ctx, tower, alien) {
