@@ -109,7 +109,7 @@ function Tower(game, ctx, x, y) {
     this.x = x;
     this.y = y;
     this.ctx = ctx;
-    this.speed = 0.1 / this.radial_distance;
+    this.speed = 100 / this.radial_distance;
     this.remove = false;
     this.fireRange = 30;
     this.isShooting = false;
@@ -119,17 +119,19 @@ function Tower(game, ctx, x, y) {
 Tower.prototype.update = function() {
     this.x = this.radial_distance * Math.cos(this.angle);
     this.y = this.radial_distance * Math.sin(this.angle);
-    this.angle += this.speed * this.game.deltaTime();
+    this.angle += this.speed * this.game.clockTick;
     if (this.angle > 6.28318531) this.angle = 0;
 }
 
 Tower.prototype.draw = function() {
+    /*
     this.ctx.beginPath();
     this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
     this.ctx.closePath();
     this.ctx.strokeStyle = "blue";
     this.ctx.stroke();
     this.ctx.closePath();
+    */
     this.ctx.save();
     this.ctx.translate(this.x, this.y);
     this.ctx.rotate(this.rotationAngle);
@@ -153,7 +155,7 @@ function Alien(game, ctx, radial_distance, angle) {
     this.radius = 5;
     this.radial_distance = radial_distance;
     this.angle = angle;
-    this.speed = 0.05;
+    this.speed = 100;
     this.remove = false;
     this.health = 100;
     this.fillColor = new Color(111, 98, 50, 1);
@@ -163,7 +165,7 @@ function Alien(game, ctx, radial_distance, angle) {
 Alien.prototype.update = function() {
     this.x = this.radial_distance * Math.cos(this.angle);
     this.y = this.radial_distance * Math.sin(this.angle);
-    this.radial_distance -= this.speed * this.game.deltaTime();
+    this.radial_distance -= this.speed * this.game.clockTick;
 
     if (this.hitPlanet()) {
         this.remove = true;
@@ -232,7 +234,7 @@ function LaserBeam(game, ctx, tower, alien) {
     this.alien = alien;
     this.remove = false;
     this.tower.isShooting = true;
-    this.damage = 1;
+    this.damage = 100;
 }
 
 LaserBeam.prototype.update = function() {
@@ -244,7 +246,7 @@ LaserBeam.prototype.update = function() {
         this.tower.isShooting = false;
         this.remove = true;
     } else {
-        this.alien.hit(this.damage * this.game.deltaTime());
+        this.alien.hit(this.damage * this.game.clockTick);
     }
 }
 
@@ -262,17 +264,24 @@ LaserBeam.prototype.draw = function() {
 }
 
 function Timer() {
-    this.time = null;
-    this.last = null;
+    this.gameTime = 0;
+    this.lastTick = 0;
+
+    this.maxStep = 0.05;
+    this.lastTimestamp = 0;
 }
 
-Timer.prototype.tick = function() {
-    this.last = this.time;
-    this.time = Date.now();
+Timer.prototype.step = function() {
+    var current = Date.now();
+    var delta = (current - this.lastTimestamp) / 1000;
+    this.gameTime += Math.min(delta, this.maxStep);
+    this.lastTimestamp = current;
 }
 
-Timer.prototype.diffSinceTick = function() {
-    return this.time - this.last;
+Timer.prototype.tickDiff = function() {
+    var delta = this.gameTime - this.lastTick;
+    this.lastTick = this.gameTime;
+    return delta;
 }
 
 function Game(ctx) {
@@ -280,6 +289,7 @@ function Game(ctx) {
     this.ctx = ctx;
     this.addEntity(new Planet(game, ctx));
     this.timer = new Timer();
+    this.clockTick = null;
     this.stats = new Stats();
 }
 
@@ -290,10 +300,6 @@ Game.prototype.startInput = function() {
         var y = event.clientY - that.ctx.canvas.getBoundingClientRect().top - (that.ctx.canvas.height/2);
         that.click = {x:x, y:y};
     });
-}
-
-Game.prototype.deltaTime = function() {
-    return this.timer.diffSinceTick();
 }
 
 Game.prototype.addEntity = function(entity) {
@@ -311,7 +317,8 @@ Game.prototype.start = function() {
 }
 
 Game.prototype.loop = function() {
-    this.timer.tick();
+    this.timer.step();
+    this.clockTick = this.timer.tickDiff();
     this.update();
     this.draw();
     this.stats.update();

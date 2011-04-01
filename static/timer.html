@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Timer Test</title>
+</head>
+<body>
+
+<canvas id="60fps" width="800" height="60"></canvas>
+<canvas id="15fps" width="800" height="60"></canvas>
+
+<script type="text/javascript">
+    var c60 = document.getElementById("60fps");
+    var c15 = document.getElementById("15fps");
+
+    var ctx60 = c60.getContext("2d");
+    var ctx15 = c15.getContext("2d");
+
+    function Timer() {
+        this.gameTime = 0;
+        this.lastTick = 0;
+
+        this.maxStep = 0.05;
+        this.lastTimestamp = 0;
+    }
+
+    Timer.prototype.step = function() {
+        var current = Date.now();
+        var delta = (current - this.lastTimestamp) / 1000;
+        this.gameTime += Math.min(delta, this.maxStep);
+        this.lastTimestamp = current;
+    }
+
+    Timer.prototype.tick = function() {
+        var delta = this.gameTime - this.lastTick;
+        this.lastTick = this.gameTime;
+        return delta;
+    }
+
+    function Rect(ctx) {
+        this.x = 0;
+        this.y = 0;
+        this.size = 20;
+        this.ctx = ctx;
+        this.timer = new Timer();
+        this.timeSpan = null;
+    }
+
+    Rect.prototype.anim = function() {
+        this.timer.step();
+        this.timeSpan = this.timer.tick();
+        this.update();
+        this.draw();
+    }
+
+    Rect.prototype.update = function() {
+        this.x += 100 * this.timeSpan;
+        if (this.x > this.ctx.canvas.width) {
+            this.x = 0;
+        }
+    }
+
+    Rect.prototype.draw = function() {
+        this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+        this.ctx.fillStyle = "red";
+        this.ctx.fillRect(this.x, this.y, this.size, this.size);
+    }
+
+    var rect15 = new Rect(ctx15);
+    var rect60 = new Rect(ctx60);
+
+    setInterval("rect15.anim()", 1000/15);
+    setInterval("rect60.anim()", 1000/60);
+
+</script>
+</body>
+</html>
