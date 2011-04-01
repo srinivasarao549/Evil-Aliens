@@ -109,10 +109,11 @@ function Tower(game, ctx, x, y) {
     this.x = x;
     this.y = y;
     this.ctx = ctx;
-    this.speed = 0.2 / this.radial_distance;
+    this.speed = 0.1 / this.radial_distance;
     this.remove = false;
     this.fireRange = 30;
     this.isShooting = false;
+    this.rotationAngle = 0;
 }
 
 Tower.prototype.update = function() {
@@ -129,7 +130,12 @@ Tower.prototype.draw = function() {
     this.ctx.strokeStyle = "blue";
     this.ctx.stroke();
     this.ctx.closePath();
+    this.ctx.save();
+    this.ctx.translate(this.x, this.y);
+    this.ctx.rotate(this.rotationAngle);
+    this.ctx.translate(-(this.x), -(this.y));
     this.ctx.drawImage(this.sprite, this.x - this.radius, this.y - this.radius);
+    this.ctx.restore();
 }
 
 Tower.prototype.canShoot = function(alien) {
@@ -147,7 +153,7 @@ function Alien(game, ctx, radial_distance, angle) {
     this.radius = 5;
     this.radial_distance = radial_distance;
     this.angle = angle;
-    this.speed = 0.1;
+    this.speed = 0.05;
     this.remove = false;
     this.health = 100;
     this.fillColor = new Color(111, 98, 50, 1);
@@ -230,7 +236,11 @@ function LaserBeam(game, ctx, tower, alien) {
 }
 
 LaserBeam.prototype.update = function() {
-    if (this.inRange()) {
+    var xDiff = this.tower.x - this.alien.x;
+    var yDiff = this.tower.y - this.alien.y;
+    this.tower.rotationAngle = Math.atan2(yDiff, xDiff) - Math.PI/2;
+
+    if (this.outOfRange(xDiff, yDiff)) {
         this.tower.isShooting = false;
         this.remove = true;
     } else {
@@ -238,9 +248,7 @@ LaserBeam.prototype.update = function() {
     }
 }
 
-LaserBeam.prototype.inRange = function() {
-    var xDiff = this.tower.x - this.alien.x;
-    var yDiff = this.tower.y - this.alien.y;
+LaserBeam.prototype.outOfRange = function(xDiff, yDiff) {
     return (Math.sqrt((xDiff*xDiff) + (yDiff*yDiff)) > 30);
 }
 
